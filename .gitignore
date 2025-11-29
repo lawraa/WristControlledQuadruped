@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+
+dynamixel_tools/walk_basic
+dynamixel_tools/walk_fast
+dynamixel_tools/id_scan
+dynamixel_tools/motor_calibration
+dynamixel_tools/set_baud
+dynamixel_tools/set_id
+dynamixel_tools/set_limits
