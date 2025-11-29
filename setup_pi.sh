@@ -2,7 +2,7 @@ set -e
 
 echo "=== Installing system dependencies ==="
 sudo apt update
-sudo apt install -y git gcc-5 build-essential
+sudo apt install -y git build-essential
 
 echo "=== Cloning DynamixelSDK ==="
 if [ ! -d "$HOME/DynamixelSDK" ]; then
