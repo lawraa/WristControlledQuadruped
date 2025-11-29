@@ -87,6 +87,13 @@ Defines RobotInterface class: handles communication with the motor server and se
 
 ## dynamixel_tools
 
+Makefile is provided to build tools in dynamixel_tools/ after you have installed the Dynamixel SDK into the your system. Download location example: `/home/dgrant/DynamixelSDK` :
+
+```bash
+cd dynamixel_tools
+make 
+```
+
 1. `motor_server.py`: Runs on Raspberry Pi, interfaces with Dynamixel motors over serial. Listens for joint position commands over TCP socket.
 
     - in the main loop
@@ -125,6 +132,8 @@ Defines RobotInterface class: handles communication with the motor server and se
     - Example way to send instructions to motor_server from Python:
 
     ```python
+    # This is in an example Python script to send joint positions to motor_server
+    
     import subprocess
     # initialize motor_server process
     proc = subprocess.Popen(

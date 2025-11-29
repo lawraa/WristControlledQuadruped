@@ -15,7 +15,8 @@ TOOLS = \
     motor_calibration \
     set_baud \
     set_id \
-    set_limits
+    set_limits \
+	motor_server
 
 # Default target: build all
 all: $(TOOLS)
