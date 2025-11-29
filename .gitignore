@@ -8,3 +8,4 @@ dynamixel_tools/motor_calibration
 dynamixel_tools/set_baud
 dynamixel_tools/set_id
 dynamixel_tools/set_limits
+dynamixel_tools/motor_server
