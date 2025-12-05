@@ -21,6 +21,7 @@ make
 
 # Example usage:
 ./walk_basic
+./id_scan 57600
 ```
 
 ## raspi_controller
