@@ -3,10 +3,11 @@
 #include <stdlib.h>
 #include "dynamixel_sdk.h"
 
-#define DEV "/dev/ttyUSB0"
+#define DEV "/dev/ttyUSB1"
 #define PROTO 1.0
 
 int main(int argc, char** argv){
+  printf("Dev: %s\n", DEV); 
   if(argc < 2){ printf("Usage: %s <baud>\n", argv[0]); return 1; }
   int baud = atoi(argv[1]);
   int port = portHandler(DEV); packetHandler();

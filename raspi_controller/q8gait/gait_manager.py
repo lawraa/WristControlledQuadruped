@@ -96,6 +96,10 @@ class GaitManager:
 
         self.current_trajectories = {gait_name: trajectories}
         self.current_gait = gait_name
+        print(  f"Loaded gait '{gait_name}' with "
+                f"{len(trajectories)} directions, "
+                f"each with up to {len(next(iter(trajectories.values())))} steps.")
+
         return True
 
     def start_movement(self, direction):

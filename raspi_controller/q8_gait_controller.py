@@ -1,19 +1,19 @@
 import math
 from typing import Dict, Optional
 
-from .q8gait import k_solver, GaitManager, GAITS
+from q8gait import k_solver, GaitManager, GAITS
 
 
 class Q8GaitController:
-    JOINT_ORDER = [
-        "front_left_hip",
-        "front_left_knee",
-        "front_right_hip",
-        "front_right_knee",
-        "rear_left_hip",
-        "rear_left_knee",
-        "rear_right_hip",
-        "rear_right_knee",
+    JOINT_NAMES = [
+        "front_left_leg_1",
+        "front_left_leg_2",
+        "back_left_leg_1",
+        "back_left_leg_2",
+        "back_right_leg_1",
+        "back_right_leg_2",
+        "front_right_leg_1",
+        "front_right_leg_2",
     ]
 
     def __init__(self, default_gait: str = "TROT") -> None:
@@ -27,67 +27,86 @@ class Q8GaitController:
         if not ok:
             raise RuntimeError(f"Failed to load gait '{default_gait}'")
 
-        self.current_direction_code: Optional[str] = None
+        self._neutral_pose: Dict[str, float] = {name: 0.0 for name in self.JOINT_NAMES}
 
-        self._neutral_pose: Dict[str, float] = {name: 0.0 for name in self.JOINT_ORDER}
+    # ----------------- Command mapping ----------------- #
 
-    # ---------------- Internal helpers ---------------- #
-
-    def _map_command_to_direction(self, command: str) -> Optional[str]:
+    def _map_command_to_direction(self, command) -> Optional[str]:
         """
-        Map your high-level commands to q8bot direction codes.
+        Map high-level command to q8bot direction code used in trajectories.
 
-        Your state machine currently uses:
-            - 'idle'
-            - 'forward'
-            - 'turn_left'
-            - 'turn_right'
-        (We can extend this later for diagonals, backward, etc.)
-
-        Returns:
-            q8bot direction code (e.g. 'f', 'l', 'r') or None for idle.
+        Accepts:
+          - plain strings: "forward", "backward", "turn_left", "turn_right", "idle"
+          - Enums: uses command.value if present
+          - case-insensitive, ignores surrounding whitespace
         """
-        if command == "idle":
+        # Extract a string from command (supports Enum.value, etc.)
+        raw = getattr(command, "value", command)
+        cmd_str = str(raw).strip().lower()
+
+        if cmd_str in ("idle", "none", "stop", ""):
             return None
-        if command == "forward":
+        if cmd_str in ("forward", "f"):
             return "f"
-        if command == "backward":
+        if cmd_str in ("backward", "b"):
             return "b"
-        if command == "turn_left":
+        if cmd_str in ("turn_left", "left", "l"):
             return "l"
-        if command == "turn_right":
+        if cmd_str in ("turn_right", "right", "r"):
             return "r"
 
         # Unknown / unsupported command -> treat as idle
+        # (If this ever happens, you'll still see State/Command in the logs)
         return None
+
+    # ----------------- Angle conversion ----------------- #
 
     def _deg_list_to_joint_dict(self, angles_deg) -> Dict[str, float]:
         """
         Convert list[8] of degrees (q1/q2 per leg) to {joint_name: rad}.
-        The q8bot order is:
+
+        q8bot's trajectory order (from append_pos_list) is:
             [FL_q1, FL_q2, FR_q1, FR_q2, BL_q1, BL_q2, BR_q1, BR_q2]
+
+        Physical motor order:
+            index 0 (ID 1) = front_left_leg_1  (FL_q1)
+            index 1 (ID 2) = front_left_leg_2  (FL_q2)
+            index 2 (ID 3) = back_left_leg_1   (BL_q1)
+            index 3 (ID 4) = back_left_leg_2   (BL_q2)
+            index 4 (ID 5) = back_right_leg_1  (BR_q1)
+            index 5 (ID 6) = back_right_leg_2  (BR_q2)
+            index 6 (ID 7) = front_right_leg_1 (FR_q1)
+            index 7 (ID 8) = front_right_leg_2 (FR_q2)
         """
         if angles_deg is None or len(angles_deg) != 8:
-            # Fallback to neutral pose if anything looks off
+            # If this happens, something is wrong upstream (tick / trajectories)
             return self._neutral_pose.copy()
 
-        result: Dict[str, float] = {}
-        for name, angle_deg in zip(self.JOINT_ORDER, angles_deg):
-            result[name] = math.radians(angle_deg)
-        return result
+        fl1, fl2, fr1, fr2, bl1, bl2, br1, br2 = angles_deg
 
-    # ---------------- Public API (main.py uses this) ---------------- #
+        return {
+            "front_left_leg_1":  math.radians(fl1),
+            "front_left_leg_2":  math.radians(fl2),
+            "back_left_leg_1":   math.radians(bl1),
+            "back_left_leg_2":   math.radians(bl2),
+            "back_right_leg_1":  math.radians(br1),
+            "back_right_leg_2":  math.radians(br2),
+            "front_right_leg_1": math.radians(fr1),
+            "front_right_leg_2": math.radians(fr2),
+        }
 
-    def step(self, dt: float, command: str) -> Dict[str, float]:
+    # ----------------- Main step API ----------------- #
+
+    def step(self, dt: float, command) -> Dict[str, float]:
         """
-        Advance the gait by one step and return joint targets.
+        Advance the gait by one step.
 
         Args:
-            dt: timestep in seconds (currently unused, but kept for compatibility)
-            command: high-level command string from your StateMachine
+            dt: timestep (seconds)
+            command: high-level command from StateMachine ("forward", "idle", etc. or Enum)
 
         Returns:
-            Dict[joint_name, angle_rad]
+            Dict[joint_name -> angle_rad]
         """
         direction = self._map_command_to_direction(command)
 
@@ -102,6 +121,7 @@ class Q8GaitController:
             started = self.gait_manager.start_movement(direction)
             if not started:
                 # No trajectory for this direction -> fall back to neutral
+                # (e.g., asking for 'l' when WALK gait only has 'f'/'b'; but TROT has f/b/l/r)
                 return self._neutral_pose.copy()
 
         # Get next point from the trajectory

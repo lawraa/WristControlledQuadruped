@@ -25,7 +25,7 @@
 
 // Default settings
 #define BAUDRATE       57600
-#define DEVICENAME     "/dev/ttyUSB0"   // Linux example
+#define DEVICENAME     "/dev/ttyUSB1"   // Linux example
 #define TORQUE_ENABLE  1
 #define TORQUE_DISABLE 0
 

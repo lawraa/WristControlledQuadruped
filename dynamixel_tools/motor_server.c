@@ -9,7 +9,7 @@
 #define ADDR_RX_GOAL_POSITION    30
 #define PROTOCOL_VERSION         1.0
 #define BAUDRATE       57600
-#define DEVICENAME     "/dev/ttyUSB0"
+#define DEVICENAME     "/dev/ttyUSB1"
 #define TORQUE_ENABLE  1
 #define TORQUE_DISABLE 0
 

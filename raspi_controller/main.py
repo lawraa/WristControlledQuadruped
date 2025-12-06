@@ -8,12 +8,13 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-SAMPLING_RATE = 50.0 # sample at 50 times per second
+# SAMPLING_RATE = 50.0 # sample at 50 times per second
+SAMPLING_RATE = 5
 DT = 1.0 / SAMPLING_RATE
 
 def main() -> None:
     robot = RobotInterface()
-    gait = GaitController()
+    gait = GaitController()  # use PRONK gait
     wrist = WristInterface()
     sm = StateMachine()
 
@@ -36,6 +37,7 @@ def main() -> None:
             state, command = sm.update(gesture) # feed in gesture and get command
             joint_targets = gait.step(DT, command) # Given time step DT and command, get joint targets
             robot.set_joint_positions(joint_targets) # send joint targets to robot to move joint motors
+            print(f"joint_targets: {joint_targets}")
             if now - last_print_time > 1.0: # print status every second
                 logging.info(f"State={state.name}, Gesture={gesture}, Command={command}")
                 last_print_time = now

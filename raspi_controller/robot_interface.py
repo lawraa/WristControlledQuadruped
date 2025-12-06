@@ -28,16 +28,15 @@ class RobotInterface:
         if not self.motor_server_path.exists():
             raise FileNotFoundError(f"motor_server not found at {self.motor_server_path}")
 
-        # Order of joints ---> motor_server joint_ids array (IDs 1..8)
         self.joint_order: List[str] = [
-            "front_left_hip",
-            "front_left_knee",
-            "front_right_hip",
-            "front_right_knee",
-            "rear_left_hip",
-            "rear_left_knee",
-            "rear_right_hip",
-            "rear_right_knee",
+            "front_left_leg_1",
+            "front_left_leg_2",
+            "back_left_leg_1",
+            "back_left_leg_2",
+            "back_right_leg_1",
+            "back_right_leg_2",
+            "front_right_leg_1",
+            "front_right_leg_2",
         ]
 
         self.proc = subprocess.Popen(
@@ -48,6 +47,7 @@ class RobotInterface:
             text=True,
             bufsize=1,
         )
+
         logger.info(f"Started motor_server at {self.motor_server_path}")
         
     def enable_torque(self) -> None:
