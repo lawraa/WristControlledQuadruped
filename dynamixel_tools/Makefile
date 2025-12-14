@@ -16,7 +16,8 @@ TOOLS = \
     set_baud \
     set_id \
     set_limits \
-	motor_server
+	motor_server \
+    set_baud_all
 
 # Default target: build all
 all: $(TOOLS)

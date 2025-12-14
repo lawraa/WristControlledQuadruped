@@ -24,7 +24,7 @@
 #define PROTOCOL_VERSION 1.0
 
 // Default settings
-#define BAUDRATE       57600
+#define BAUDRATE       1000000
 #define DEVICENAME     "/dev/ttyUSB1"   // Linux example
 #define TORQUE_ENABLE  1
 #define TORQUE_DISABLE 0

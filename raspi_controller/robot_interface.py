@@ -39,11 +39,19 @@ class RobotInterface:
             "front_right_leg_2",
         ]
 
+        # self.proc = subprocess.Popen(
+        #     [str(self.motor_server_path)],
+        #     stdin=subprocess.PIPE,
+        #     stdout=subprocess.DEVNULL,
+        #     stderr=subprocess.STDOUT,
+        #     text=True,
+        #     bufsize=1,
+        # )
         self.proc = subprocess.Popen(
             [str(self.motor_server_path)],
             stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdout=None,
+            stderr=None,
             text=True,
             bufsize=1,
         )
@@ -65,13 +73,14 @@ class RobotInterface:
 
         for name in self.joint_order:
             angle_rad = joint_positions.get(name, 0.0)
+            # print(f"Joint {name}: angle_rad={angle_rad}")
             offset_deg = math.degrees(angle_rad)
             target_deg = CENTER_DEG + offset_deg
             pos = deg_to_pos(target_deg)
             pos_vals.append(pos)
 
         line = " ".join(str(p) for p in pos_vals) + "\n"
-        logger.debug(f"Sending positions to motor_server: {line.strip()}")
+        logger.info(f"Sending positions to motor_server: {line.strip()}")
         try:
             assert self.proc.stdin is not None
             self.proc.stdin.write(line)

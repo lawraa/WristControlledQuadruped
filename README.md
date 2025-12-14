@@ -23,6 +23,12 @@ make
 ./walk_basic
 ```
 
+```bash 
+$ python3 -m venv venv
+$ source venv/bin/activate
+$ pip install scipy
+```
+
 ## raspi_controller
 ```bash 
 raspi_controller/
