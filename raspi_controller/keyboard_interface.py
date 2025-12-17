@@ -29,7 +29,6 @@ class KeyboardInterface:
     def __init__(self) -> None:
         self._current_gesture: Gesture = "none"
         self._fd = sys.stdin.fileno()
-
         try:
             self._old_settings = termios.tcgetattr(self._fd)
         except termios.error:
@@ -46,16 +45,14 @@ class KeyboardInterface:
             "  a = turn left\n"
             "  d = turn right\n"
             "  s or space = stop/idle\n"
+            "  x = backward\n"
+            "  j = jump\n"
             "  Ctrl+C in terminal = exit program\n"
         )
 
     def poll(self) -> None:
-        """
-        Non-blocking poll for a keypress. Call this every loop.
-        Updates self._current_gesture if a valid key is pressed.
-        """
         if self._old_settings is None:
-            return  # no TTY
+            return 
 
         rlist, _, _ = select.select([sys.stdin], [], [], 0.0)
         if not rlist:
@@ -65,24 +62,27 @@ class KeyboardInterface:
 
         if ch == "w":
             self._current_gesture = "forward"
-            print("[KeyboardInterface] gesture -> forward")
+            print(f"[KeyboardInterface] \"{ch}\" is pressed: gesture -> forward")
         elif ch == "a":
             self._current_gesture = "turn_left"
-            print("[KeyboardInterface] gesture -> turn_left")
+            print(f"[KeyboardInterface] \"{ch}\" is pressed: gesture -> turn_left")
         elif ch == "d":
             self._current_gesture = "turn_right"
-            print("[KeyboardInterface] gesture -> turn_right")
+            print(f"[KeyboardInterface] \"{ch}\" is pressed: gesture -> turn_right")
         elif ch == "s" or ch == " ":
             self._current_gesture = "stop"
-            print("[KeyboardInterface] gesture -> stop")
-        # You can add more keys here later (e.g., backward, diagonals)
+            print(f"[KeyboardInterface] \"{ch}\" is pressed: gesture -> stop")
+        elif ch == "x":
+            self._current_gesture = "backward"
+            print(f"[KeyboardInterface] \"{ch}\" is pressed: gesture -> backward")
+        elif ch == "j":
+            self._current_gesture = "jump"
+            print(f"[KeyboardInterface] \"{ch}\" is pressed: gesture -> jump")
 
     def read_gesture(self) -> Gesture:
-        """Return the most recent gesture decided by keyboard input."""
         return self._current_gesture
 
     def close(self) -> None:
-        """Restore terminal settings."""
         if self._old_settings is not None:
             try:
                 termios.tcsetattr(self._fd, termios.TCSADRAIN, self._old_settings)
