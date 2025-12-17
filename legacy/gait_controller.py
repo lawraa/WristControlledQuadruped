@@ -4,7 +4,6 @@ import math
 
 class GaitController:
     def __init__(self) -> None:
-        # Your actual joint names
         self.joint_names = [
             "front_left_leg_1",
             "front_left_leg_2",
@@ -16,10 +15,7 @@ class GaitController:
             "front_right_leg_2",
         ]
 
-        # Neutral pose = all joints at 0 rad (centered by RobotInterface)
         self.neutral_pose = {name: 0.0 for name in self.joint_names}
-
-        # Time accumulator for gait phase
         self.t = 0.0
 
     def step(self, dt: float, command: str) -> Dict[str, float]:

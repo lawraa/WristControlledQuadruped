@@ -8,6 +8,7 @@ class k_solver:
     # def __init__(self, d = 19.5, l1 = 25, l2 = 40, l1p = 25, l2p = 40):
     # d = 29, l1 = 33, l2 = 33
     # l2 =44.5 
+    # d is the distance between the two motors
     def __init__(self, d = 30, l1 = 33, l2 = 50, l1p = 44.5, l2p = 44.5):
         self.d = d
         self.l1 = l1
