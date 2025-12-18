@@ -19,12 +19,10 @@ class StateMachine:
         self.state = RobotState.INIT
 
     def update(self, gesture: Gesture) -> Tuple[RobotState, str]:
-        # On first call, transition INIT -> IDLE
         if self.state == RobotState.INIT:
             self.state = RobotState.IDLE
             return self.state, "idle"
 
-        # Safety stop: only exit on explicit movement gesture
         if self.state == RobotState.SAFETY_STOP:
             if gesture in ("forward", "turn_left", "turn_right"):
                 self.state = RobotState.MOVING
@@ -32,7 +30,6 @@ class StateMachine:
             else:
                 return self.state, "idle"
 
-        # Normal states
         if self.state == RobotState.IDLE:
             if gesture == "forward":
                 self.state = RobotState.MOVING
