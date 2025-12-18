@@ -24,6 +24,12 @@ make
 ./id_scan 57600
 ```
 
+```bash 
+$ python3 -m venv venv
+$ source venv/bin/activate
+$ pip install scipy
+```
+
 ## raspi_controller
 ```bash 
 raspi_controller/
@@ -157,3 +163,8 @@ make
     ```
 
  
+
+## RX-24F Documentation:
+https://emanual.robotis.com/docs/en/dxl/rx/rx-24f/
+
+
