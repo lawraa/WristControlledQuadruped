@@ -6,6 +6,16 @@
 pip3 install -r requirements.txt
 ```
 
+## Session-Based Workflow
+
+**Each data collection creates a named session.** You can:
+- Collect multiple sessions (different days, electrode placements, etc.)
+- Train on a specific session
+- Train on multiple sessions combined
+- Compare different sessions
+
+Sessions are stored in `training_data/<session_name>/`
+
 ## Three-Step Process
 
 ### Step 1: Collect Training Data
@@ -16,7 +26,9 @@ pip3 install -r requirements.txt
 ./collect_data_auto.py
 ```
 
-Choose a preset:
+1. **Enter a session name** (e.g., "morning_session", "seated_v1", "john_day1")
+   - Or press Enter to use timestamp
+2. **Choose a preset:**
 - **[1] 5-Minute Quick** - 15 samples/gesture (good for testing)
 - **[2] 10-Minute Fast** - 30 samples/gesture (minimum recommended)
 - **[3] 15-Minute Standard** - 50 samples/gesture (best balance)
@@ -49,8 +61,14 @@ The system automatically:
 ./train_model.py
 ```
 
-- Loads all collected data
-- Extracts features
+**Select which session(s) to train on:**
+- Select a single session by number
+- Select `a` for all sessions (combines data)
+- Select multiple: `1,3,4` (comma-separated)
+
+What it does:
+- Loads data from selected session(s)
+- Extracts features (RMS, MAV, Waveform Length, Zero Crossings, Variance)
 - Trains Random Forest classifier
 - Shows accuracy metrics
 - Saves model to `models/gesture_model.pkl`

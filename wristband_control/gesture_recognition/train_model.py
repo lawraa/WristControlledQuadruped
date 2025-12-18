@@ -14,8 +14,8 @@ import joblib
 from datetime import datetime
 
 class GestureModelTrainer:
-    def __init__(self, data_dir="training_data"):
-        self.data_dir = data_dir
+    def __init__(self, sessions=None):
+        self.sessions = sessions if sessions else []
         self.model = None
         self.gesture_labels = []
         self.X = None
@@ -59,32 +59,43 @@ class GestureModelTrainer:
         return np.array(features)
 
     def load_data(self):
-        """Load all collected gesture data"""
+        """Load all collected gesture data from selected sessions"""
         print("Loading data...")
+        print(f"Sessions: {', '.join(self.sessions)}")
+        print()
 
         all_samples = []
         all_labels = []
 
-        # Load all .jsonl files in data directory
-        for filename in os.listdir(self.data_dir):
-            if filename.endswith('.jsonl'):
-                filepath = os.path.join(self.data_dir, filename)
-                gesture_name = filename.replace('.jsonl', '')
+        # Load data from each session
+        for session in self.sessions:
+            session_dir = os.path.join("training_data", session)
 
-                print(f"  Loading {gesture_name}...", end="")
+            if not os.path.exists(session_dir):
+                print(f"  Warning: Session '{session}' not found, skipping...")
+                continue
 
-                with open(filepath, 'r') as f:
-                    count = 0
-                    for line in f:
-                        sample = json.loads(line)
-                        all_samples.append(np.array(sample['data']))
-                        all_labels.append(sample['gesture'])
-                        count += 1
+            print(f"  Session: {session}")
 
-                print(f" {count} samples")
+            # Load all .jsonl files in session directory
+            for filename in os.listdir(session_dir):
+                if filename.endswith('.jsonl'):
+                    filepath = os.path.join(session_dir, filename)
+                    gesture_name = filename.replace('.jsonl', '')
+
+                    with open(filepath, 'r') as f:
+                        count = 0
+                        for line in f:
+                            sample = json.loads(line)
+                            all_samples.append(np.array(sample['data']))
+                            all_labels.append(sample['gesture'])
+                            count += 1
+
+                    if count > 0:
+                        print(f"    {gesture_name}: {count} samples")
 
         if not all_samples:
-            raise ValueError("No data found! Run collect_data.py first.")
+            raise ValueError("No data found! Run collect_data_auto.py or collect_data.py first.")
 
         print(f"\nTotal samples loaded: {len(all_samples)}")
 
@@ -237,7 +248,74 @@ class GestureModelTrainer:
             traceback.print_exc()
 
 def main():
-    trainer = GestureModelTrainer()
+    print("=" * 70)
+    print("EMG Gesture Recognition - Model Training")
+    print("=" * 70)
+    print()
+
+    # List available sessions
+    training_data_dir = "training_data"
+    if not os.path.exists(training_data_dir):
+        print("Error: No training data directory found!")
+        print("Run collect_data_auto.py or collect_data.py first.")
+        return
+
+    available_sessions = [d for d in os.listdir(training_data_dir)
+                         if os.path.isdir(os.path.join(training_data_dir, d))]
+
+    if not available_sessions:
+        print("Error: No sessions found!")
+        print("Run collect_data_auto.py or collect_data.py first.")
+        return
+
+    print("Available sessions:")
+    print()
+
+    session_info_list = []
+    for i, session in enumerate(sorted(available_sessions), 1):
+        session_info_file = os.path.join(training_data_dir, session, "session_info.json")
+        if os.path.exists(session_info_file):
+            with open(session_info_file, 'r') as f:
+                info = json.load(f)
+                print(f"  [{i}] {session}")
+                print(f"      Samples: {info['total_samples']} | Date: {info['collection_date'][:10]}")
+                session_info_list.append((session, info))
+        else:
+            print(f"  [{i}] {session} (no info available)")
+            session_info_list.append((session, None))
+        print()
+
+    print(f"  [a] All sessions ({len(available_sessions)} total)")
+    print()
+    print("=" * 70)
+    print()
+
+    # Get user selection
+    choice = input("Select session(s) to train on (number, 'a' for all, or comma-separated): ").strip().lower()
+
+    selected_sessions = []
+
+    if choice == 'a':
+        selected_sessions = [s[0] for s in session_info_list]
+    elif ',' in choice:
+        # Multiple selections
+        indices = [int(x.strip()) - 1 for x in choice.split(',') if x.strip().isdigit()]
+        selected_sessions = [session_info_list[i][0] for i in indices if 0 <= i < len(session_info_list)]
+    elif choice.isdigit():
+        idx = int(choice) - 1
+        if 0 <= idx < len(session_info_list):
+            selected_sessions = [session_info_list[idx][0]]
+
+    if not selected_sessions:
+        print("Error: Invalid selection!")
+        return
+
+    print()
+    print(f"Training on {len(selected_sessions)} session(s): {', '.join(selected_sessions)}")
+    print()
+    input("Press Enter to begin training...")
+
+    trainer = GestureModelTrainer(sessions=selected_sessions)
     trainer.run()
 
 if __name__ == "__main__":

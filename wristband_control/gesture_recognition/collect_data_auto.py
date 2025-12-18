@@ -15,7 +15,7 @@ import numpy as np
 import random
 
 class AutoGestureCollector:
-    def __init__(self, output_dir="training_data"):
+    def __init__(self, session_name=None):
         self.ser = None
         self.connected = False
         self.streaming = False
@@ -26,7 +26,8 @@ class AutoGestureCollector:
         self.EXCLUDED_PORTS = ['/dev/ttyUSB1']
 
         # Data collection
-        self.output_dir = output_dir
+        self.session_name = session_name
+        self.output_dir = None  # Set after session name is determined
         self.samples = []
 
         # Packet parsing
@@ -85,6 +86,20 @@ class AutoGestureCollector:
 
         # Session presets
         self.PRESETS = {
+            'single': {
+                'name': 'Single Sample Test (1 per gesture)',
+                'duration_minutes': 1,
+                'samples_per_gesture': 1,
+                'gesture_duration': 1.0,
+                'rest_duration': 0.3
+            },
+            'test': {
+                'name': '1-Minute Test Session (5 per gesture)',
+                'duration_minutes': 1,
+                'samples_per_gesture': 5,
+                'gesture_duration': 1.0,
+                'rest_duration': 0.3
+            },
             'quick': {
                 'name': '5-Minute Quick Session',
                 'duration_minutes': 5,
@@ -115,7 +130,11 @@ class AutoGestureCollector:
             }
         }
 
-        os.makedirs(output_dir, exist_ok=True)
+    def set_session_name(self, name):
+        """Set session name and create output directory"""
+        self.session_name = name
+        self.output_dir = os.path.join("training_data", name)
+        os.makedirs(self.output_dir, exist_ok=True)
 
     def clear_screen(self):
         """Clear terminal screen"""
@@ -270,17 +289,34 @@ class AutoGestureCollector:
         """Collect EMG data for specified duration"""
         window_buffer = deque(maxlen=self.WINDOW_SIZE * 10)  # Large buffer
         start_time = time.time()
+        packets_read = 0
+        null_count = 0
 
         while time.time() - start_time < duration_seconds:
             pairs = self.read_packet()
             if pairs is not None:
                 window_buffer.append(pairs)
+                packets_read += 1
+            else:
+                null_count += 1
             time.sleep(0.001)
+
+        # Debug output
+        elapsed = time.time() - start_time
+        print(f"\n  Collected {len(window_buffer)} samples in {elapsed:.2f}s (need {self.WINDOW_SIZE})")
+        print(f"  Packets read: {packets_read}, Null reads: {null_count}")
+
+        if len(window_buffer) > 0:
+            print(f"  Sample data shape: {np.array(list(window_buffer)[:1]).shape}")
+            print(f"  First sample: {list(window_buffer)[0]}")
 
         # Return the collected data as numpy array
         if len(window_buffer) >= self.WINDOW_SIZE:
-            return np.array(window_buffer)
+            result = np.array(list(window_buffer))
+            print(f"  Final array shape: {result.shape}")
+            return result
         else:
+            print(f"  WARNING: Not enough samples! Only got {len(window_buffer)}/{self.WINDOW_SIZE}")
             return None
 
     def save_sample(self, window_data, gesture_label):
@@ -297,6 +333,8 @@ class AutoGestureCollector:
         filename = os.path.join(self.output_dir, f"{gesture_label}.jsonl")
         with open(filename, 'a') as f:
             f.write(json.dumps(sample) + '\n')
+
+        print(f"  ✓ Saved sample to {filename} (shape: {window_data.shape})")
 
     def display_gesture_prompt(self, gesture, countdown=None, collecting=False):
         """Display current gesture prompt"""
@@ -360,14 +398,20 @@ class AutoGestureCollector:
             print(f"  {gesture['display']:10} [{bar[:30]}] {count}")
         print("-" * 80)
 
-    def run_session(self, preset_key):
+    def run_session(self, preset_key, session_name):
         """Run automated collection session"""
         preset = self.PRESETS[preset_key]
+
+        # Set session name and create directory
+        self.set_session_name(session_name)
 
         self.clear_screen()
         print("=" * 80)
         print(f"Starting: {preset['name']}")
         print("=" * 80)
+        print()
+        print(f"  Session name: {self.session_name}")
+        print(f"  Save location: {self.output_dir}/")
         print()
         print(f"  Duration: {preset['duration_minutes']} minutes")
         print(f"  Target: {preset['samples_per_gesture']} samples per gesture")
@@ -394,6 +438,24 @@ class AutoGestureCollector:
 
         print("\nWaiting for data stream to stabilize...")
         time.sleep(2)
+
+        # Test if we're receiving data
+        print("\nTesting data reception...")
+        test_count = 0
+        test_start = time.time()
+        while time.time() - test_start < 2.0 and test_count < 10:
+            pairs = self.read_packet()
+            if pairs is not None:
+                test_count += 1
+                if test_count == 1:
+                    print(f"  ✓ First packet received: {pairs}")
+
+        if test_count == 0:
+            print("  ✗ ERROR: No data received! Check OpenBCI connection.")
+            self.cleanup()
+            return
+        else:
+            print(f"  ✓ Data reception OK: {test_count} packets in 2 seconds")
 
         # Calculate total samples needed
         total_samples_target = preset['samples_per_gesture'] * len(self.GESTURES)
@@ -453,8 +515,9 @@ class AutoGestureCollector:
 
     def save_summary(self, preset, gesture_counts):
         """Save session summary"""
-        summary_file = os.path.join(self.output_dir, "dataset_summary.json")
+        summary_file = os.path.join(self.output_dir, "session_info.json")
         summary = {
+            'session_name': self.session_name,
             'total_samples': sum(gesture_counts.values()),
             'gestures': gesture_counts,
             'window_size': self.WINDOW_SIZE,
@@ -498,12 +561,48 @@ def main():
     print("AUTOMATED EMG GESTURE DATA COLLECTION")
     print("=" * 80)
     print()
-    print("Choose a session preset:")
-    print()
 
     collector = AutoGestureCollector()
 
+    # List existing sessions
+    training_data_dir = "training_data"
+    if os.path.exists(training_data_dir):
+        existing_sessions = [d for d in os.listdir(training_data_dir)
+                           if os.path.isdir(os.path.join(training_data_dir, d))]
+        if existing_sessions:
+            print("Existing sessions:")
+            for session in sorted(existing_sessions):
+                session_info_file = os.path.join(training_data_dir, session, "session_info.json")
+                if os.path.exists(session_info_file):
+                    with open(session_info_file, 'r') as f:
+                        info = json.load(f)
+                        print(f"  - {session} ({info['total_samples']} samples, {info['collection_date'][:10]})")
+                else:
+                    print(f"  - {session}")
+            print()
+
+    # Get session name
+    print("=" * 80)
+    print("Session Name:")
+    print("  Use a descriptive name (e.g., 'morning_session', 'electrodes_v1', 'john_seated')")
+    print("  Default: Current timestamp will be used")
+    print()
+    session_name = input("Enter session name (or press Enter for timestamp): ").strip()
+
+    if not session_name:
+        # Use timestamp as default
+        session_name = datetime.now().strftime("%Y%m%d_%H%M%S")
+        print(f"Using session name: {session_name}")
+
+    print()
+    print("=" * 80)
+    print()
+    print("Choose a session preset:")
+    print()
+
     presets_list = [
+        ('single', collector.PRESETS['single']),
+        ('test', collector.PRESETS['test']),
         ('quick', collector.PRESETS['quick']),
         ('custom_fast', collector.PRESETS['custom_fast']),
         ('standard', collector.PRESETS['standard']),
@@ -521,13 +620,13 @@ def main():
     print("=" * 80)
 
     while True:
-        choice = input("\nEnter choice (1-4): ").strip()
-        if choice in ['1', '2', '3', '4']:
+        choice = input("\nEnter choice (1-6): ").strip()
+        if choice in ['1', '2', '3', '4', '5', '6']:
             preset_key = presets_list[int(choice) - 1][0]
             break
-        print("Invalid choice. Please enter 1, 2, 3, or 4.")
+        print("Invalid choice. Please enter 1, 2, 3, 4, 5, or 6.")
 
-    collector.run_session(preset_key)
+    collector.run_session(preset_key, session_name)
 
 if __name__ == "__main__":
     main()

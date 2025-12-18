@@ -14,7 +14,7 @@ from collections import deque
 import numpy as np
 
 class GestureDataCollector:
-    def __init__(self, output_dir="training_data"):
+    def __init__(self, session_name=None):
         self.ser = None
         self.connected = False
         self.streaming = False
@@ -25,7 +25,8 @@ class GestureDataCollector:
         self.EXCLUDED_PORTS = ['/dev/ttyUSB1']
 
         # Data collection
-        self.output_dir = output_dir
+        self.session_name = session_name
+        self.output_dir = None
         self.samples = []
         self.current_gesture = None
 
@@ -48,8 +49,11 @@ class GestureDataCollector:
             '6': 'jump',         # Hand spread
         }
 
-        # Create output directory
-        os.makedirs(output_dir, exist_ok=True)
+    def set_session_name(self, name):
+        """Set session name and create output directory"""
+        self.session_name = name
+        self.output_dir = os.path.join("training_data", name)
+        os.makedirs(self.output_dir, exist_ok=True)
 
     def clear_screen(self):
         """Clear terminal screen"""
@@ -207,19 +211,25 @@ class GestureDataCollector:
 
         print("\nCollecting window...", end="", flush=True)
 
+        start_time = time.time()
+        packets_read = 0
         while len(self.window_buffer) < self.WINDOW_SIZE:
             pairs = self.read_packet()
             if pairs is not None:
                 self.window_buffer.append(pairs)
+                packets_read += 1
                 # Show progress
                 if len(self.window_buffer) % 50 == 0:
                     print(".", end="", flush=True)
             time.sleep(0.001)
 
-        print(" Done!")
+        elapsed = time.time() - start_time
+        print(f" Done! ({len(self.window_buffer)} samples in {elapsed:.2f}s)")
+        print(f"  Packets read: {packets_read}")
 
         # Convert to numpy array
         window_data = np.array(self.window_buffer)
+        print(f"  Array shape: {window_data.shape}")
         return window_data
 
     def save_sample(self, window_data, gesture_label):
@@ -238,7 +248,7 @@ class GestureDataCollector:
         with open(filename, 'a') as f:
             f.write(json.dumps(sample) + '\n')
 
-        self.print_status(f"Saved sample for gesture '{gesture_label}' (Total: {len(self.samples)})", "SUCCESS")
+        self.print_status(f"Saved sample to {filename} (shape: {window_data.shape}, Total: {len(self.samples)})", "SUCCESS")
 
     def display_menu(self):
         """Display collection menu"""
@@ -283,8 +293,9 @@ class GestureDataCollector:
             return
 
         # Save summary file
-        summary_file = os.path.join(self.output_dir, "dataset_summary.json")
+        summary_file = os.path.join(self.output_dir, "session_info.json")
         summary = {
+            'session_name': self.session_name,
             'total_samples': len(self.samples),
             'gestures': {
                 gesture: sum(1 for s in self.samples if s['gesture'] == gesture)
@@ -298,7 +309,7 @@ class GestureDataCollector:
         with open(summary_file, 'w') as f:
             json.dump(summary, f, indent=2)
 
-        self.print_status(f"Saved dataset summary to {summary_file}", "SUCCESS")
+        self.print_status(f"Saved session info to {summary_file}", "SUCCESS")
         self.print_status(f"Total samples: {len(self.samples)}", "INFO")
 
     def run(self):
@@ -314,6 +325,24 @@ class GestureDataCollector:
 
         print("\nWaiting for data stream to stabilize...")
         time.sleep(2)
+
+        # Test if we're receiving data
+        print("\nTesting data reception...")
+        test_count = 0
+        test_start = time.time()
+        while time.time() - test_start < 2.0 and test_count < 10:
+            pairs = self.read_packet()
+            if pairs is not None:
+                test_count += 1
+                if test_count == 1:
+                    print(f"  ✓ First packet received: {pairs}")
+
+        if test_count == 0:
+            print("  ✗ ERROR: No data received! Check OpenBCI connection.")
+            self.cleanup()
+            return
+        else:
+            print(f"  ✓ Data reception OK: {test_count} packets in 2 seconds")
 
         try:
             while True:
@@ -362,7 +391,41 @@ class GestureDataCollector:
 
 def main():
     print("=" * 70)
-    print("EMG Gesture Data Collection")
+    print("EMG Gesture Data Collection (Manual Mode)")
+    print("=" * 70)
+    print()
+
+    # List existing sessions
+    training_data_dir = "training_data"
+    if os.path.exists(training_data_dir):
+        existing_sessions = [d for d in os.listdir(training_data_dir)
+                           if os.path.isdir(os.path.join(training_data_dir, d))]
+        if existing_sessions:
+            print("Existing sessions:")
+            for session in sorted(existing_sessions):
+                session_info_file = os.path.join(training_data_dir, session, "session_info.json")
+                if os.path.exists(session_info_file):
+                    with open(session_info_file, 'r') as f:
+                        info = json.load(f)
+                        print(f"  - {session} ({info['total_samples']} samples, {info['collection_date'][:10]})")
+                else:
+                    print(f"  - {session}")
+            print()
+
+    # Get session name
+    print("=" * 70)
+    print("Session Name:")
+    print("  Use a descriptive name (e.g., 'morning_session', 'electrodes_v1', 'john_seated')")
+    print("  Default: Current timestamp will be used")
+    print()
+    session_name = input("Enter session name (or press Enter for timestamp): ").strip()
+
+    if not session_name:
+        # Use timestamp as default
+        session_name = datetime.now().strftime("%Y%m%d_%H%M%S")
+        print(f"Using session name: {session_name}")
+
+    print()
     print("=" * 70)
     print()
     print("Instructions:")
@@ -382,6 +445,7 @@ def main():
     input("Press Enter to start...")
 
     collector = GestureDataCollector()
+    collector.set_session_name(session_name)
     collector.run()
 
 if __name__ == "__main__":
