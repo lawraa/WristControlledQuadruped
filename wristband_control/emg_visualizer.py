@@ -21,7 +21,7 @@ class EMGVisualizer:
         # Settings
         self.BAUD_RATE = 115200
         self.TIMEOUT = 1
-        self.EXCLUDED_PORTS = ['/dev/ttyUSB1']  # Dynamixel port
+        self.EXCLUDED_PORTS = ['/dev/ttyUSB0']  # Dynamixel port
 
         # Data buffers for 4 differential pairs (last 100 samples)
         self.pair_buffers = {i: deque(maxlen=100) for i in range(1, 5)}

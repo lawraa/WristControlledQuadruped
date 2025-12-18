@@ -1,0 +1,16 @@
+{
+  "session_name": "20251218_020132",
+  "total_samples": 6,
+  "gestures": {
+    "forward": 1,
+    "backward": 1,
+    "left": 1,
+    "right": 1,
+    "stop": 1,
+    "jump": 1
+  },
+  "window_size": 200,
+  "num_channels": 4,
+  "session_preset": "Single Sample Test (1 per gesture)",
+  "collection_date": "2025-12-18T02:02:19.617823"
+}

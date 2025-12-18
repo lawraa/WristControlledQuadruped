@@ -22,17 +22,22 @@ class RealtimeGestureClassifier:
         # Settings
         self.BAUD_RATE = 115200
         self.TIMEOUT = 1
-        self.EXCLUDED_PORTS = ['/dev/ttyUSB1']
+        self.EXCLUDED_PORTS = ['/dev/ttyUSB0']
 
         # Load trained model
         if not os.path.exists(model_path):
-            raise FileNotFoundError(f"Model not found: {model_path}\nRun train_model.py first!")
+            raise FileNotFoundError(f"Model not found: {model_path}\nRun a train_model script first!")
 
         print(f"Loading model from {model_path}...")
         model_data = joblib.load(model_path)
         self.model = model_data['model']
+        self.scaler = model_data.get('scaler', None)  # SVM/LDA use scaler
         self.gestures = model_data['gestures']
-        print(f"✓ Model loaded. Gestures: {self.gestures}")
+        self.feature_type = model_data.get('feature_type', 'default')
+        self.method = model_data.get('method', 'Unknown')
+        print(f"✓ Model loaded: {self.method}")
+        print(f"  Gestures: {self.gestures}")
+        print(f"  Feature type: {self.feature_type}")
 
         # Packet parsing
         self.start_byte = 0xA0
@@ -86,7 +91,7 @@ class RealtimeGestureClassifier:
             return None
 
         for port in available:
-            if port.device in ['/dev/ttyUSB0', '/dev/ttyACM0']:
+            if port.device in ['/dev/ttyUSB1', '/dev/ttyACM0']:
                 return port.device
 
         return available[0].device if available else None
@@ -176,7 +181,16 @@ class RealtimeGestureClassifier:
         return pairs
 
     def extract_features(self, window_data):
-        """Extract features from window (same as training)"""
+        """Extract features from window (matches training method)"""
+        if self.feature_type == 'MAV':
+            return self.extract_features_mav(window_data)
+        elif self.feature_type == 'time_domain':
+            return self.extract_features_time_domain(window_data)
+        else:
+            return self.extract_features_default(window_data)
+
+    def extract_features_default(self, window_data):
+        """Default feature extraction (Random Forest)"""
         features = []
         num_channels = window_data.shape[1]
 
@@ -200,6 +214,66 @@ class RealtimeGestureClassifier:
             var = np.var(channel_data)
 
             features.extend([rms, mav, wl, zc, var])
+
+        return np.array(features)
+
+    def extract_features_mav(self, window_data):
+        """MAV feature extraction (SVM)"""
+        features = []
+        num_channels = window_data.shape[1]
+
+        for ch in range(num_channels):
+            channel_data = window_data[:, ch]
+
+            # Mean Absolute Value
+            mav = np.mean(np.abs(channel_data))
+
+            # Root Mean Square
+            rms = np.sqrt(np.mean(channel_data**2))
+
+            # Variance
+            var = np.var(channel_data)
+
+            features.extend([mav, rms, var])
+
+        return np.array(features)
+
+    def extract_features_time_domain(self, window_data):
+        """Time-domain feature extraction (LDA)"""
+        features = []
+        num_channels = window_data.shape[1]
+
+        for ch in range(num_channels):
+            channel_data = window_data[:, ch]
+
+            # MAV
+            mav = np.mean(np.abs(channel_data))
+
+            # RMS
+            rms = np.sqrt(np.mean(channel_data**2))
+
+            # Waveform Length
+            wl = np.sum(np.abs(np.diff(channel_data)))
+
+            # Zero Crossings
+            threshold = 0.01 * np.max(np.abs(channel_data)) if np.max(np.abs(channel_data)) > 0 else 0.01
+            zc = np.sum(np.diff(np.sign(channel_data)) != 0)
+
+            # Slope Sign Changes
+            diff_signal = np.diff(channel_data)
+            ssc = np.sum(np.diff(np.sign(diff_signal)) != 0)
+
+            # Variance
+            var = np.var(channel_data)
+
+            # Integrated EMG
+            iemg = np.sum(np.abs(channel_data))
+
+            # Willison Amplitude
+            wa_threshold = 0.01 * np.max(np.abs(channel_data)) if np.max(np.abs(channel_data)) > 0 else 0.01
+            wa = np.sum(np.abs(np.diff(channel_data)) > wa_threshold)
+
+            features.extend([mav, rms, wl, zc, ssc, var, iemg, wa])
 
         return np.array(features)
 
@@ -249,9 +323,15 @@ class RealtimeGestureClassifier:
         # Extract features
         features = self.extract_features(window_data)
 
-        # Predict
-        prediction = self.model.predict([features])[0]
-        probabilities = self.model.predict_proba([features])[0]
+        # Scale features if scaler is available (for SVM/LDA)
+        if self.scaler is not None:
+            features = self.scaler.transform([features])[0]
+            prediction = self.model.predict([features])[0]
+            probabilities = self.model.predict_proba([features])[0]
+        else:
+            prediction = self.model.predict([features])[0]
+            probabilities = self.model.predict_proba([features])[0]
+
         confidence = np.max(probabilities)
 
         return prediction, confidence
@@ -372,11 +452,66 @@ def main():
     print("Real-time EMG Gesture Classifier")
     print("=" * 80)
     print()
-    print("This script uses your trained model to classify gestures in real-time.")
-    print()
-    input("Press Enter to start...")
 
-    classifier = RealtimeGestureClassifier()
+    # List available models
+    models_dir = "models"
+    if not os.path.exists(models_dir):
+        print("Error: No models directory found!")
+        print("Run a train_model script first.")
+        return
+
+    available_models = [f for f in os.listdir(models_dir) if f.endswith('.pkl')]
+
+    if not available_models:
+        print("Error: No models found!")
+        print("Run a train_model script first (train_model.py, train_model_svm.py, etc.)")
+        return
+
+    print("Available models:")
+    print()
+    for i, model in enumerate(sorted(available_models), 1):
+        model_path = os.path.join(models_dir, model)
+        try:
+            model_data = joblib.load(model_path)
+            method = model_data.get('method', 'Unknown')
+            n_samples = model_data.get('n_samples', 'Unknown')
+            date = model_data.get('training_date', 'Unknown')
+            if date != 'Unknown' and 'T' in date:
+                date = date.split('T')[0]
+            print(f"  [{i}] {model}")
+            print(f"      Method: {method}")
+            print(f"      Samples: {n_samples} | Date: {date}")
+        except:
+            print(f"  [{i}] {model} (could not load metadata)")
+        print()
+
+    print("=" * 80)
+    print()
+
+    # Get user selection
+    choice = input("Select model to use (default=1): ").strip()
+
+    if choice == "":
+        choice = "1"
+
+    if not choice.isdigit():
+        print("Error: Invalid selection!")
+        return
+
+    idx = int(choice) - 1
+    if idx < 0 or idx >= len(available_models):
+        print("Error: Invalid selection!")
+        return
+
+    selected_model = sorted(available_models)[idx]
+    model_path = os.path.join(models_dir, selected_model)
+
+    print()
+    print(f"Using model: {selected_model}")
+    print()
+    input("Press Enter to start classification...")
+
+    classifier = RealtimeGestureClassifier(model_path=model_path)
     classifier.run()
 
 if __name__ == "__main__":

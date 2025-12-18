@@ -1,0 +1,16 @@
+{
+  "session_name": "septest_newgest_v1",
+  "total_samples": 60,
+  "gestures": {
+    "rest": 10,
+    "fist": 10,
+    "hand_open": 10,
+    "wrist_flexion": 10,
+    "wrist_extension": 10,
+    "pinch": 10
+  },
+  "window_size": 200,
+  "num_channels": 4,
+  "session_preset": "Separability Test (10 per gesture)",
+  "collection_date": "2025-12-18T04:53:59.321756"
+}

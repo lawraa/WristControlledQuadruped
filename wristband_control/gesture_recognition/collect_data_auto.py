@@ -23,7 +23,7 @@ class AutoGestureCollector:
         # Settings
         self.BAUD_RATE = 115200
         self.TIMEOUT = 1
-        self.EXCLUDED_PORTS = ['/dev/ttyUSB1']
+        self.EXCLUDED_PORTS = ['/dev/ttyUSB0']
 
         # Data collection
         self.session_name = session_name
@@ -41,46 +41,25 @@ class AutoGestureCollector:
         # Gesture definitions with detailed instructions
         self.GESTURES = [
             {
-                'name': 'forward',
-                'display': 'FORWARD',
-                'action': 'Extend wrist upward',
-                'description': 'Point your hand toward the ceiling',
-                'command': 'Make the quadruped move forward'
+                'name': 'relaxed',
+                'display': 'RELAXED',
+                'action': 'Relax completely',
+                'description': 'Let your hand hang naturally, no tension',
+                'command': 'Neutral/Stop state'
             },
             {
-                'name': 'backward',
-                'display': 'BACKWARD',
-                'action': 'Flex wrist downward',
-                'description': 'Point your hand toward the floor',
-                'command': 'Make the quadruped move backward'
+                'name': 'fist',
+                'display': 'FIST',
+                'action': 'Close hand into fist',
+                'description': 'Make a tight fist, squeeze firmly',
+                'command': 'Can map to any robot command'
             },
             {
-                'name': 'left',
-                'display': 'LEFT',
-                'action': 'Tilt wrist toward pinky side',
-                'description': 'Ulnar deviation - bend wrist left',
-                'command': 'Make the quadruped turn left'
-            },
-            {
-                'name': 'right',
-                'display': 'RIGHT',
-                'action': 'Tilt wrist toward thumb side',
-                'description': 'Radial deviation - bend wrist right',
-                'command': 'Make the quadruped turn right'
-            },
-            {
-                'name': 'stop',
-                'display': 'STOP',
-                'action': 'Relax - neutral position',
-                'description': 'Let your hand rest naturally',
-                'command': 'Make the quadruped stop'
-            },
-            {
-                'name': 'jump',
-                'display': 'JUMP',
-                'action': 'Spread fingers wide',
-                'description': 'Open your hand and spread all fingers',
-                'command': 'Make the quadruped jump'
+                'name': 'open_hand',
+                'display': 'OPEN HAND',
+                'action': 'Open hand wide',
+                'description': 'Spread all fingers as wide as possible',
+                'command': 'Can map to any robot command'
             }
         ]
 
@@ -92,6 +71,13 @@ class AutoGestureCollector:
                 'samples_per_gesture': 1,
                 'gesture_duration': 1.0,
                 'rest_duration': 0.3
+            },
+            'separability': {
+                'name': 'Separability Test (20 per gesture)',
+                'duration_minutes': 10,
+                'samples_per_gesture': 20,
+                'gesture_duration': 1.0,
+                'rest_duration': 2.0
             },
             'test': {
                 'name': '1-Minute Test Session (5 per gesture)',
@@ -105,21 +91,21 @@ class AutoGestureCollector:
                 'duration_minutes': 5,
                 'samples_per_gesture': 15,
                 'gesture_duration': 1.5,
-                'rest_duration': 1.0
+                'rest_duration': 2.0
             },
             'standard': {
                 'name': '15-Minute Standard Session',
                 'duration_minutes': 15,
                 'samples_per_gesture': 50,
                 'gesture_duration': 2.0,
-                'rest_duration': 1.0
+                'rest_duration': 2.0
             },
             'long': {
                 'name': '30-Minute Extended Session',
                 'duration_minutes': 30,
                 'samples_per_gesture': 100,
                 'gesture_duration': 2.5,
-                'rest_duration': 1.0
+                'rest_duration': 2.0
             },
             'custom_fast': {
                 'name': '10-Minute Fast Session',
@@ -161,7 +147,7 @@ class AutoGestureCollector:
             return None
 
         for port in available:
-            if port.device in ['/dev/ttyUSB0', '/dev/ttyACM0']:
+            if port.device in ['/dev/ttyUSB1', '/dev/ttyACM0']:
                 return port.device
 
         return available[0].device if available else None
@@ -314,9 +300,9 @@ class AutoGestureCollector:
             print(f"  Sample data shape: {np.array(list(window_buffer)[:1]).shape}")
             print(f"  First sample: {list(window_buffer)[0]}")
 
-        # Return the collected data as numpy array
+        # Return the collected data as numpy array (EXACTLY WINDOW_SIZE samples)
         if len(window_buffer) >= self.WINDOW_SIZE:
-            result = np.array(list(window_buffer))
+            result = np.array(list(window_buffer)[:self.WINDOW_SIZE])  # FIX: Take only first WINDOW_SIZE samples
             print(f"  Final array shape: {result.shape}")
             return result
         else:
@@ -608,6 +594,7 @@ def main():
 
     presets_list = [
         ('single', collector.PRESETS['single']),
+        ('separability', collector.PRESETS['separability']),
         ('test', collector.PRESETS['test']),
         ('quick', collector.PRESETS['quick']),
         ('custom_fast', collector.PRESETS['custom_fast']),
@@ -626,11 +613,11 @@ def main():
     print("=" * 80)
 
     while True:
-        choice = input("\nEnter choice (1-6): ").strip()
-        if choice in ['1', '2', '3', '4', '5', '6']:
+        choice = input("\nEnter choice (1-7): ").strip()
+        if choice in ['1', '2', '3', '4', '5', '6', '7']:
             preset_key = presets_list[int(choice) - 1][0]
             break
-        print("Invalid choice. Please enter 1, 2, 3, 4, 5, or 6.")
+        print("Invalid choice. Please enter 1-7.")
 
     collector.run_session(preset_key, session_name)
 

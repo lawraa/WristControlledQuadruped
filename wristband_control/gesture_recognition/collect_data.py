@@ -22,7 +22,7 @@ class GestureDataCollector:
         # Settings
         self.BAUD_RATE = 115200
         self.TIMEOUT = 1
-        self.EXCLUDED_PORTS = ['/dev/ttyUSB1']
+        self.EXCLUDED_PORTS = ['/dev/ttyUSB0']
 
         # Data collection
         self.session_name = session_name
@@ -80,7 +80,7 @@ class GestureDataCollector:
             return None
 
         for port in available:
-            if port.device in ['/dev/ttyUSB0', '/dev/ttyACM0']:
+            if port.device in ['/dev/ttyUSB1', '/dev/ttyACM0']:
                 return port.device
 
         return available[0].device if available else None

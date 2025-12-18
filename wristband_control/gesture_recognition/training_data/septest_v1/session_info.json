@@ -1,0 +1,16 @@
+{
+  "session_name": "septest_v1",
+  "total_samples": 18,
+  "gestures": {
+    "forward": 4,
+    "backward": 2,
+    "left": 2,
+    "right": 4,
+    "stop": 3,
+    "jump": 3
+  },
+  "window_size": 200,
+  "num_channels": 4,
+  "session_preset": "Separability Test (10 per gesture)",
+  "collection_date": "2025-12-18T04:17:48.429299"
+}

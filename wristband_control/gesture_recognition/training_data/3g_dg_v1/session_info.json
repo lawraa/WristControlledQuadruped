@@ -1,0 +1,13 @@
+{
+  "session_name": "3g_dg_v1",
+  "total_samples": 60,
+  "gestures": {
+    "relaxed": 20,
+    "fist": 20,
+    "open_hand": 20
+  },
+  "window_size": 200,
+  "num_channels": 4,
+  "session_preset": "Separability Test (20 per gesture)",
+  "collection_date": "2025-12-18T05:50:05.225517"
+}

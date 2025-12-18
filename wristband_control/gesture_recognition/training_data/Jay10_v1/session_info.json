@@ -1,0 +1,16 @@
+{
+  "session_name": "Jay10_v1",
+  "total_samples": 109,
+  "gestures": {
+    "forward": 20,
+    "backward": 17,
+    "left": 16,
+    "right": 16,
+    "stop": 19,
+    "jump": 21
+  },
+  "window_size": 200,
+  "num_channels": 4,
+  "session_preset": "10-Minute Fast Session",
+  "collection_date": "2025-12-18T03:32:24.253802"
+}
