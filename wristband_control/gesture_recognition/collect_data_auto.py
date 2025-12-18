@@ -250,8 +250,10 @@ class AutoGestureCollector:
 
         return pairs
 
-    def read_packet(self):
-        """Read and parse one packet"""
+    def read_packets(self):
+        """Read and parse all available packets, return list of pairs"""
+        pairs_list = []
+
         try:
             if self.ser.in_waiting > 0:
                 data = self.ser.read(self.ser.in_waiting)
@@ -275,36 +277,38 @@ class AutoGestureCollector:
 
                     if channels is not None:
                         pairs = self.extract_pairs(channels)
-                        self.packet_buffer = self.packet_buffer[33:]
-                        return pairs
+                        if pairs is not None:
+                            pairs_list.append(pairs)
 
                     self.packet_buffer = self.packet_buffer[33:]
 
         except Exception as e:
-            pass
+            print(f"  Exception in read_packets: {e}")
 
-        return None
+        return pairs_list
 
     def collect_window(self, duration_seconds):
         """Collect EMG data for specified duration"""
         window_buffer = deque(maxlen=self.WINDOW_SIZE * 10)  # Large buffer
         start_time = time.time()
         packets_read = 0
-        null_count = 0
+        read_calls = 0
 
         while time.time() - start_time < duration_seconds:
-            pairs = self.read_packet()
-            if pairs is not None:
-                window_buffer.append(pairs)
-                packets_read += 1
-            else:
-                null_count += 1
+            pairs_list = self.read_packets()
+            read_calls += 1
+
+            if pairs_list:
+                for pairs in pairs_list:
+                    window_buffer.append(pairs)
+                    packets_read += 1
+
             time.sleep(0.001)
 
         # Debug output
         elapsed = time.time() - start_time
         print(f"\n  Collected {len(window_buffer)} samples in {elapsed:.2f}s (need {self.WINDOW_SIZE})")
-        print(f"  Packets read: {packets_read}, Null reads: {null_count}")
+        print(f"  Packets read: {packets_read}, Read calls: {read_calls}")
 
         if len(window_buffer) > 0:
             print(f"  Sample data shape: {np.array(list(window_buffer)[:1]).shape}")
@@ -444,11 +448,13 @@ class AutoGestureCollector:
         test_count = 0
         test_start = time.time()
         while time.time() - test_start < 2.0 and test_count < 10:
-            pairs = self.read_packet()
-            if pairs is not None:
-                test_count += 1
-                if test_count == 1:
-                    print(f"  ✓ First packet received: {pairs}")
+            pairs_list = self.read_packets()
+            if pairs_list:
+                for pairs in pairs_list:
+                    test_count += 1
+                    if test_count == 1:
+                        print(f"  ✓ First packet received: {pairs}")
+            time.sleep(0.01)
 
         if test_count == 0:
             print("  ✗ ERROR: No data received! Check OpenBCI connection.")
