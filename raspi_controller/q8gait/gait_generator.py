@@ -273,6 +273,76 @@ def generate_pronk_trajectories(leg, gait_params):
     return trajectories
 
 
+def generate_jump_trajectories(leg, gait_params):
+    """
+    Generate complete set of trajectories for JUMP gait.
+    Jump has all legs moving in phase with strong vertical push (yrange2).
+
+    The jump motion is designed to:
+    1. Crouch down slightly (prepare phase)
+    2. Push off strongly with all legs together (using yrange2 for extra push)
+    3. Optionally move horizontally during the jump (xrange)
+    4. Land with all legs together
+
+    Args:
+        leg: Kinematics solver instance
+        gait_params: [stacktype, x0, y0, xrange, yrange, yrange2, s1_count, s2_count]
+            - xrange: horizontal displacement during jump (0 for in-place)
+            - yrange: typically 0 (not used for jump, we use yrange2)
+            - yrange2: vertical push strength (higher = stronger jump)
+            - s1_count: duration of jump phase (airtime + takeoff)
+            - s2_count: duration of landing/recovery phase
+
+    Returns:
+        Dictionary mapping movement types to trajectory arrays:
+        {
+            'f': forward jump (n x 8),
+            'b': backward jump (n x 8),
+            'l': left jump (n x 8),
+            'r': right jump (n x 8),
+            'in_place': vertical jump (n x 8)
+        }
+        where n = s1_count + s2_count (complete cycle)
+    """
+    stacktype, x0, y0, xrange, yrange, yrange2, s1_count, s2_count = gait_params
+
+    # Generate base jump trajectory with horizontal movement
+    jump_forward = _generate_base_trajectories(
+        leg, x0, y0, xrange, yrange, yrange2, s1_count, s2_count, stride_scale=1.0
+    )
+
+    # In-place jump (no horizontal movement)
+    jump_in_place = _generate_base_trajectories(
+        leg, x0, y0, 0, yrange, yrange2, s1_count, s2_count, stride_scale=1.0
+    )
+
+    # Backward jump
+    jump_backward = _generate_base_trajectories(
+        leg, x0, y0, xrange, yrange, yrange2, s1_count, s2_count, stride_scale=-1.0
+    )
+
+    # Check for failures
+    if jump_forward is None or jump_in_place is None or jump_backward is None:
+        return None
+
+    # For left/right jumps, we need to generate trajectories with different legs
+    # Left jump: left legs stay closer to center, right legs push more
+    # Right jump: right legs stay closer to center, left legs push more
+    # For simplicity, we'll use the forward trajectory with leg-specific adjustments
+
+    # All legs move together (no phase shift) - this is the key for jumping
+    trajectories = {
+        'f': append_pos_list(jump_forward, jump_forward, jump_forward, jump_forward),  # Forward jump
+        'b': append_pos_list(jump_backward, jump_backward, jump_backward, jump_backward),  # Backward jump
+        'in_place': append_pos_list(jump_in_place, jump_in_place, jump_in_place, jump_in_place),  # Vertical jump
+        # For left/right, we use asymmetric leg movements to create lateral motion
+        'l': append_pos_list(jump_backward, jump_forward, jump_backward, jump_forward),  # Left jump
+        'r': append_pos_list(jump_forward, jump_backward, jump_forward, jump_backward),  # Right jump
+    }
+
+    return trajectories
+
+
 def _generate_base_trajectories(leg, x0, y0, xrange, yrange, yrange2, s1_count, s2_count, stride_scale=1.0):
     """
     Generate base single-leg trajectory with variable stride length.

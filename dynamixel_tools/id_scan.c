@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include "dynamixel_sdk.h"
 
-#define DEV "/dev/ttyUSB0"
+#define DEV "/dev/ttyUSB1"
 #define PROTO 1.0
 
 int main(int argc, char** argv){

@@ -1,6 +1,6 @@
 from q8gait.kinematics_solver import k_solver
 from q8gait.config_rx24f import default_config
-from raspi_controller.q8gait.robot import Robot
+from q8gait.robot import Robot
 from q8gait.motion_runner import MotionRunner
 from keyboard_interface import KeyboardInterface
 
@@ -18,7 +18,7 @@ def main():
     robot.open()
     robot.torque(True)
 
-    runner = MotionRunner(robot, leg, gait_name="TROT", hz=100)
+    runner = MotionRunner(robot, leg, gait_name="TROT", hz=30)
 
     runner.move_to_neutral(seconds=1.0)
 

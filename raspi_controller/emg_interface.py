@@ -14,6 +14,10 @@ GESTURES = {
     "turn_right",
     "stop",
     "jump",
+    "jump_forward",
+    "jump_backward",
+    "jump_left",
+    "jump_right",
 }
 
 
@@ -54,7 +58,8 @@ class EMGInterface:
     Contract:
       - poll() reads new sensor data and updates internal state
       - read_gesture() returns one of:
-            "forward", "backward", "turn_left", "turn_right", "stop", "jump"
+            "forward", "backward", "turn_left", "turn_right", "stop",
+            "jump", "jump_forward", "jump_backward", "jump_left", "jump_right"
         or None if no update / no confident gesture.
     """
 
@@ -167,14 +172,72 @@ class EMGInterface:
         Map features -> gesture string.
 
         Must return one of:
-            "forward", "backward", "turn_left", "turn_right", "stop", "jump"
+            "forward", "backward", "turn_left", "turn_right", "stop",
+            "jump", "jump_forward", "jump_backward", "jump_left", "jump_right"
         or None (no confident gesture).
         """
         # TODO(EMG): implement classification logic.
         # Suggested approach:
         #   - return "stop" when confidence is low / below thresholds
-        #   - return "jump" on a short high peak
+        #   - return "jump" or directional jump on a short high peak
         #   - return turning based on channel differences
+        #
+        # JUMP DETECTION GUIDANCE:
+        # -------------------------
+        # Jump gestures can be detected using IMU accelerometer data:
+        #
+        # 1. DETECTING A JUMP:
+        #    - Look for a sudden spike in vertical acceleration (Z-axis or total magnitude)
+        #    - Typical threshold: accel_magnitude > 2.5g (where g = 9.8 m/s²)
+        #    - The spike should be short duration (< 200ms)
+        #
+        # 2. DETERMINING JUMP DIRECTION:
+        #    - Sample the wrist orientation (pitch/roll/yaw) at the time of the jump
+        #    - Forward jump: wrist pitched forward (pitch > 30°)
+        #    - Backward jump: wrist pitched backward (pitch < -30°)
+        #    - Left jump: wrist rolled left (roll > 30°)
+        #    - Right jump: wrist rolled right (roll < -30°)
+        #    - In-place jump: wrist level (|pitch| < 30° and |roll| < 30°)
+        #
+        # 3. EXAMPLE IMPLEMENTATION:
+        #    ```python
+        #    # Assuming features contains IMU data:
+        #    accel_x = features.get('accel_x', 0)
+        #    accel_y = features.get('accel_y', 0)
+        #    accel_z = features.get('accel_z', 0)
+        #    pitch = features.get('pitch', 0)  # in degrees
+        #    roll = features.get('roll', 0)    # in degrees
+        #
+        #    # Calculate total acceleration magnitude
+        #    accel_mag = math.sqrt(accel_x**2 + accel_y**2 + accel_z**2)
+        #
+        #    # Jump detection threshold (in m/s² or g's)
+        #    JUMP_THRESHOLD = 2.5 * 9.8  # 2.5g
+        #
+        #    if accel_mag > JUMP_THRESHOLD:
+        #        # Jump detected! Now determine direction
+        #        if abs(pitch) > abs(roll):
+        #            # Pitch is dominant
+        #            if pitch > 30:
+        #                return "jump_forward"
+        #            elif pitch < -30:
+        #                return "jump_backward"
+        #        else:
+        #            # Roll is dominant
+        #            if roll > 30:
+        #                return "jump_left"
+        #            elif roll < -30:
+        #                return "jump_right"
+        #
+        #        # Default to in-place jump if orientation is neutral
+        #        return "jump"
+        #    ```
+        #
+        # 4. PREVENTING FALSE POSITIVES:
+        #    - Use a cooldown period after each jump (already handled by _apply_rules)
+        #    - Require the spike to return to baseline quickly
+        #    - Consider adding a "gesture preparation" phase detection
+        #
         return None
 
     # ----------------------------

@@ -12,6 +12,12 @@ GESTURE_TO_DIR = {
     "turn_left": "l",
     "turn_right": "r",
     "stop": None,
+    # Jump gestures with directional support
+    "jump": "in_place",  # Default jump is in-place
+    "jump_forward": "f",
+    "jump_backward": "b",
+    "jump_left": "l",
+    "jump_right": "r",
 }
 
 class MotionRunner:
@@ -23,13 +29,14 @@ class MotionRunner:
         self.dt = 1.0 / hz
         self.neutral_center_deg = neutral_center_deg
         self.normal_speed = 0
-        self.normal_torque = 1023
+        self.normal_torque = 600
         self.gait_manager = GaitManager(self.leg, GAITS)
         if not self.gait_manager.load_gait(gait_name):
             raise RuntimeError(f"Failed to load gait {gait_name}")
 
         self.gait_name = gait_name
         self.current_dir: Optional[str] = None
+        self.is_jumping = False  # Track if we're currently in a jump
 
         _, x0, y0, *_ = GAITS[gait_name]
         self.neutral_x = x0 # x0 foot location
@@ -53,20 +60,85 @@ class MotionRunner:
             self.robot.write_positions_deg(cmd)
             time.sleep(self.dt)
 
+    def do_jump(self, direction: str = "in_place") -> None:
+        """
+        Execute a jump in the specified direction.
+
+        Args:
+            direction: Jump direction ('in_place', 'f', 'b', 'l', 'r')
+        """
+        # Save current gait state
+        saved_gait = self.gait_name
+
+        # Stop current movement
+        self.gait_manager.stop()
+        self.current_dir = None
+
+        # Determine which jump gait to use based on direction
+        if direction == "f":
+            jump_gait = "JUMP_FORWARD"
+        elif direction == "b":
+            jump_gait = "JUMP_BACKWARD"
+        else:
+            jump_gait = "JUMP"  # For in_place, left, right - use base JUMP
+
+        print(f"[MotionRunner] Executing {jump_gait} in direction '{direction}'")
+
+        # Load the jump gait
+        if not self.gait_manager.load_gait(jump_gait):
+            print(f"[MotionRunner] Failed to load jump gait {jump_gait}")
+            return
+
+        # Start the jump movement
+        if not self.gait_manager.start_movement(direction):
+            print(f"[MotionRunner] Failed to start jump movement in direction '{direction}'")
+            self.gait_manager.load_gait(saved_gait)
+            return
+
+        self.is_jumping = True
+        self.current_dir = direction
+
+        # Calculate number of ticks for complete jump cycle
+        jump_params = GAITS[jump_gait]
+        s1_count, s2_count = jump_params[6], jump_params[7]
+        total_jump_ticks = s1_count + s2_count
+
+        # Execute the jump for one complete cycle
+        for _ in range(total_jump_ticks):
+            q_abs = self.gait_manager.tick()
+            if q_abs is not None:
+                cmd = self._recenter_to_150(q_abs)
+                self.robot.write_positions_deg(cmd)
+            time.sleep(self.dt)
+
+        # Stop the jump and restore the original gait
+        self.gait_manager.stop()
+        self.is_jumping = False
+        self.current_dir = None
+
+        # Reload the saved gait
+        if not self.gait_manager.load_gait(saved_gait):
+            print(f"[MotionRunner] Failed to restore gait {saved_gait}")
+
+        print(f"[MotionRunner] Jump complete, restored to {saved_gait}")
+
+        # Return to neutral position after jump
+        self.move_to_neutral(0.5)
+
     def set_gesture(self, gesture: Optional[str]) -> None:
         if gesture is None:
             return
-        
+
+        # Handle jump gestures separately
+        if gesture in ("jump", "jump_forward", "jump_backward", "jump_left", "jump_right"):
+            direction = GESTURE_TO_DIR.get(gesture, "in_place")
+            self.do_jump(direction)
+            return
+
         if gesture in ("forward", "backward", "turn_left", "turn_right"):
             self.robot.set_torque_limit_all(self.normal_torque)
             self.robot.set_moving_speed_all(self.normal_speed)
 
-        # if gesture == "jump":
-        #     self.gait_manager.stop()
-        #     self.current_dir = None
-        #     self.do_jump()
-        #     return
-            
         direction = GESTURE_TO_DIR.get(gesture, None)
 
         if direction is None:
@@ -88,8 +160,6 @@ class MotionRunner:
             return
         cmd = self._recenter_to_150(q_abs)
         self.robot.write_positions_deg(cmd)
-
-
     
     def loop_forever(self, keyboard_interface) -> None:
         next_t = time.perf_counter()

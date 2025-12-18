@@ -18,7 +18,7 @@ class RX24FConfig:
 
 def default_config() -> RX24FConfig:
     return RX24FConfig(
-        port="/dev/ttyUSB0",
+        port="/dev/ttyUSB1",
         baudrate=1000000, 
         protocol_version=1.0,     # RX-24F -> Protocol 1.0
         motors=[

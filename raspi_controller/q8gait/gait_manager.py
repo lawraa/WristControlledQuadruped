@@ -2,7 +2,8 @@ from .gait_generator import (
     generate_trot_trajectories,
     generate_walk_trajectories,
     generate_bound_trajectories,
-    generate_pronk_trajectories
+    generate_pronk_trajectories,
+    generate_jump_trajectories
 )
 
 
@@ -24,13 +25,17 @@ GAITS = {
     'TROT_FAST': ['trot', 15.0, 43.36, 50, 20, 0, 12, 24],
     'WALK':      ['walk',  15.0, 43.36, 30, 20, 0, 20, 140],
     'BOUND':     ['bound', 15.0, 33.36, 40, 0, 20, 50, 10],
-    'PRONK':     ['pronk', 15.0, 33.36, 40, 0, 20, 60, 10]
+    'PRONK':     ['pronk', 15.0, 33.36, 40, 0, 20, 60, 10],
+    'JUMP':      ['jump', 15.0, 40.0, 0, 0, 25, 20, 5],  # In-place jump with strong yrange2 push
+    'JUMP_FORWARD': ['jump', 15.0, 40.0, 30, 0, 25, 20, 5],  # Jump with forward motion
+    'JUMP_BACKWARD': ['jump', 15.0, 40.0, -30, 0, 25, 20, 5],  # Jump with backward motion
 }
 '''
 trot → diagonal legs move together (like a dog trotting)
 walk → one leg at a time
 bound → front legs together, back legs together
 pronk → all legs jump together
+jump → all legs jump together with strong vertical push (like pronk but optimized for jumping)
 '''
 
 class GaitManager:
@@ -102,6 +107,8 @@ class GaitManager:
             trajectories = generate_bound_trajectories(self.leg, gait_params)
         elif stacktype == 'pronk':
             trajectories = generate_pronk_trajectories(self.leg, gait_params)
+        elif stacktype == 'jump':
+            trajectories = generate_jump_trajectories(self.leg, gait_params)
         else:
             return False
 
