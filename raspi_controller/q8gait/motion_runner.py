@@ -6,7 +6,7 @@ from typing import Optional
 
 from .gait_manager import GaitManager, GAITS
 from .kinematics_solver import k_solver
-from .robot_rx24f import RX24FRobot
+from .robot import Robot
 
 
 GESTURE_TO_DIR = {
@@ -19,7 +19,7 @@ GESTURE_TO_DIR = {
 
 
 class MotionRunner:
-    def __init__(self, robot: RX24FRobot, leg_solver: k_solver, gait_name: str = "TROT", hz: int = 10,
+    def __init__(self, robot: Robot, leg_solver: k_solver, gait_name: str = "TROT", hz: int = 10,
                  neutral_center_deg: float = 150.0):
         self.robot = robot
         self.leg = leg_solver

@@ -33,8 +33,6 @@ bound → front legs together, back legs together
 pronk → all legs jump together
 '''
 
-
-
 class GaitManager:
     """
     Manages gait trajectories, movement state, and direction switching.

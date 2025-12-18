@@ -1,6 +1,6 @@
 from q8gait.kinematics_solver import k_solver
 from q8gait.config_rx24f import default_config
-from q8gait.robot_rx24f import RX24FRobot
+from raspi_controller.q8gait.robot import Robot
 from q8gait.motion_runner import MotionRunner
 from keyboard_interface import KeyboardInterface
 
@@ -10,7 +10,7 @@ L2 = 44
 
 def main():
     cfg = default_config() 
-    robot = RX24FRobot(cfg)
+    robot = Robot(cfg)
     leg = k_solver(CENTER_DIST, L1, L2, L1, L2)
 
     kb = KeyboardInterface()

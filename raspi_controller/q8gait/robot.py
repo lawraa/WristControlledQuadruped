@@ -5,9 +5,9 @@ from .config_rx24f import RX24FConfig
 
 # Protocol 1.0 control table addresses (common for AX/RX series)
 ADDR_TORQUE_ENABLE = 24
-ADDR_GOAL_POSITION = 30   # 2 bytes
-ADDR_MOVING_SPEED  = 32   # 2 bytes (optional)
-ADDR_TORQUE_LIMIT  = 34   # 2 bytes (optional)
+ADDR_GOAL_POSITION = 30
+ADDR_MOVING_SPEED  = 32
+ADDR_TORQUE_LIMIT  = 34
 
 TORQUE_ENABLE = 1
 TORQUE_DISABLE = 0
@@ -20,12 +20,7 @@ ADDR_MOVING_SPEED  = 32
 ADDR_TORQUE_LIMIT  = 34
 ADDR_MAX_TORQUE   = 14 
 
-
-
-class RX24FRobot:
-    """
-    Sends 8 joint angles (deg) to RX-24F motors using Protocol 1.0 SyncWrite.
-    """
+class Robot:
     def __init__(self, cfg: RX24FConfig):
         if cfg.motors is None or len(cfg.motors) != 8:
             raise ValueError("cfg.motors must have 8 MotorSpec entries.")
@@ -63,31 +58,22 @@ class RX24FRobot:
         self._torque_on = on
 
     def deg_to_ticks(self, deg: float, motor_index: int) -> int:
-        """
-        Convert degrees to Dynamixel ticks for RX-24F (0..1023 for 0..300 deg typical).
-        Apply reverse + offset.
-        """
+        # Convert degrees(0..300) to ticks(0..1023))
         spec = self.cfg.motors[motor_index]
-        # Basic mapping
         ticks = int((deg / self.cfg.max_deg) * self.cfg.ticks_per_300deg + 0.5)
         ticks = clamp(ticks, 0, self.cfg.ticks_per_300deg)
 
-        # Reverse direction (mirror)
         if spec.reverse:
             ticks = self.cfg.ticks_per_300deg - ticks
 
-        # Apply offset calibration
         ticks = ticks + spec.offset_ticks
 
-        # Wrap/clamp to valid
         ticks = clamp(ticks, 0, self.cfg.ticks_per_300deg)
         return ticks
 
     def write_positions_deg(self, pos_deg_8: List[float]) -> None:
-        """
-        pos_deg_8 is length-8:
-        [FL_q1, FL_q2, FR_q1, FR_q2, BL_q1, BL_q2, BR_q1, BR_q2]
-        """
+        # Write target positions to all 8 motors.
+        # input is in this order: [FL_q1, FL_q2, FR_q1, FR_q2, BL_q1, BL_q2, BR_q1, BR_q2]
         if len(pos_deg_8) != 8:
             raise ValueError("pos_deg_8 must have length 8.")
 
@@ -96,7 +82,6 @@ class RX24FRobot:
         for i, deg in enumerate(pos_deg_8):
             spec = self.cfg.motors[i]
             ticks = self.deg_to_ticks(deg, i)
-            # little-endian 2 bytes
             param = [ticks & 0xFF, (ticks >> 8) & 0xFF]
             ok = self.sync_write_pos.addParam(spec.motor_id, bytes(param))
             if not ok:
