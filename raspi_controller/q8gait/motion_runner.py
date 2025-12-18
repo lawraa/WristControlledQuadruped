@@ -6,7 +6,6 @@ from .gait_manager import GaitManager, GAITS
 from .kinematics_solver import k_solver
 from .robot import Robot
 
-
 GESTURE_TO_DIR = {
     "forward": "f",
     "backward": "b",
@@ -14,7 +13,6 @@ GESTURE_TO_DIR = {
     "turn_right": "r",
     "stop": None,
 }
-
 
 class MotionRunner:
     def __init__(self, robot: Robot, leg_solver: k_solver, gait_name: str = "TROT", hz: int = 10,
