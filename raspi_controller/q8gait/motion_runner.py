@@ -22,7 +22,7 @@ GESTURE_TO_DIR = {
 
 class MotionRunner:
     def __init__(self, robot: Robot, leg_solver: k_solver, gait_name: str = "TROT", hz: int = 10,
-                 neutral_center_deg: float = 150.0):
+                 neutral_center_deg: float = 150.0, custom_gaits: Optional[dict] = None):
         self.robot = robot
         self.leg = leg_solver
         self.hz = hz
@@ -30,7 +30,12 @@ class MotionRunner:
         self.neutral_center_deg = neutral_center_deg
         self.normal_speed = 0
         self.normal_torque = 600
-        self.gait_manager = GaitManager(self.leg, GAITS)
+
+        # Use custom gaits if provided, otherwise use default GAITS
+        gaits = custom_gaits if custom_gaits is not None else GAITS
+        self.gaits = gaits
+
+        self.gait_manager = GaitManager(self.leg, gaits)
         if not self.gait_manager.load_gait(gait_name):
             raise RuntimeError(f"Failed to load gait {gait_name}")
 
@@ -38,7 +43,7 @@ class MotionRunner:
         self.current_dir: Optional[str] = None
         self.is_jumping = False  # Track if we're currently in a jump
 
-        _, x0, y0, *_ = GAITS[gait_name]
+        _, x0, y0, *_ = gaits[gait_name]
         self.neutral_x = x0 # x0 foot location
         self.neutral_y = y0 # y0 how tall it stands
 
@@ -99,7 +104,7 @@ class MotionRunner:
         self.current_dir = direction
 
         # Calculate number of ticks for complete jump cycle
-        jump_params = GAITS[jump_gait]
+        jump_params = self.gaits[jump_gait]
         s1_count, s2_count = jump_params[6], jump_params[7]
         total_jump_ticks = s1_count + s2_count
 

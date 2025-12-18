@@ -26,9 +26,9 @@ GAITS = {
     'WALK':      ['walk',  15.0, 43.36, 30, 20, 0, 20, 140],
     'BOUND':     ['bound', 15.0, 33.36, 40, 0, 20, 50, 10],
     'PRONK':     ['pronk', 15.0, 33.36, 40, 0, 20, 60, 10],
-    'JUMP':      ['jump', 15.0, 40.0, 0, 0, 25, 20, 5],  # In-place jump with strong yrange2 push
-    'JUMP_FORWARD': ['jump', 15.0, 40.0, 30, 0, 25, 20, 5],  # Jump with forward motion
-    'JUMP_BACKWARD': ['jump', 15.0, 40.0, -30, 0, 25, 20, 5],  # Jump with backward motion
+    'JUMP':      ['jump', 15.0, 25.0, 0, 0, 40, 30, 5],  # In-place jump with strong yrange2 push
+    'JUMP_FORWARD': ['jump', 15.0, 30.0, 35, 0, 35, 30, 5],
+    'JUMP_BACKWARD': ['jump', 15.0, 30.0, -35, 0, 35, 30, 5],
 }
 '''
 trot → diagonal legs move together (like a dog trotting)
