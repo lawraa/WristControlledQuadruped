@@ -45,10 +45,6 @@ class MotionRunner:
         self.q_neutral = [q1n, q2n, q1n, q2n, q1n, q2n, q1n, q2n]
 
     def _recenter_to_150(self, q_abs_8):
-        """
-        Convert absolute IK angles into centered motor commands:
-          cmd = 150 + (q_abs - q_neutral)
-        """
         out = []
         for i in range(8):
             out.append(self.neutral_center_deg + (q_abs_8[i] - self.q_neutral[i]))

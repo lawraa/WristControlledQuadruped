@@ -162,3 +162,8 @@ make
     ```
 
  
+
+## RX-24F Documentation:
+https://emanual.robotis.com/docs/en/dxl/rx/rx-24f/
+
+
