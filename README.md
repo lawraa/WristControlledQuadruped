@@ -1,7 +1,7 @@
 Wrist-Controlled Quadruped Robot
 
 📄 Project Paper:
-[View the full report (EECS 149 Final Project)](./149_final_quadruped.pdf)
+[View the full report (EECS 149/249 Final Project)](./149_final_quadruped.pdf)
 
 
 ## Raspberry Pi Setup
