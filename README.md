@@ -1,3 +1,9 @@
+Wrist-Controlled Quadruped Robot
+
+📄 Project Paper:
+[View the full report (EECS 149 Final Project)](./149_final_quadruped.pdf)
+
+
 ## Raspberry Pi Setup
 
 To install the Dynamixel SDK and build required examples:
